@@ -1,7 +1,6 @@
 stages:
   - test
 
-
 hello_ci:
   stage: test
   script:
