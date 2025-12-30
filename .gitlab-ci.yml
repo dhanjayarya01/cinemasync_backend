@@ -1,8 +1,6 @@
-stages:
-  - test
+
 
 hello_ci:
-  stage: test
   script:
     - echo "CI is working"
     - node -v || echo "Node not installed"
