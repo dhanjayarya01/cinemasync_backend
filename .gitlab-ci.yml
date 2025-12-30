@@ -1,8 +1,30 @@
 stages:
+  - build
   - test
+  - deploy
 
 hello_ci:
   stage: test
   script:
     - echo "CI is working"
     - node -v || echo "Node not installed"
+    - npm -v || echo "NPM not installed"
+
+build_backend:
+  stage: build
+  script:
+    - cd src
+    - npm install
+    - echo "Backend build completed"
+  artifacts:
+    paths:
+      - src/node_modules/    
+      - src/dist/
+    expire_in: 1 hour
+  only:
+    - main
+deploy_backend:
+  stage: deploy
+  script:
+    - echo "Deploying backend..."
+    # Add your deployment commands here
