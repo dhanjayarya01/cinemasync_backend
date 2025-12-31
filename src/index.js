@@ -27,6 +27,10 @@ const io = new socketIo(server, {
   },
 });
 
+app.get('/health', (req, res) => {
+  res.send('Cinemasync Backend is running');
+});
+
 app.use(
   cors({
     origin: "*",

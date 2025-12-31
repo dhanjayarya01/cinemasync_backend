@@ -78,11 +78,12 @@ build_image:
 
     - echo "🐳 Building Docker image"
     - docker build -t dhanjayarya/cinemasync-backend:latest .
-    - docker build -t dhanjayarya/cinemasync-backend:0.1 .
+    - docker build -t dhanjayarya/cinemasync-backend:0.2.
 
     - echo "🚀 Pushing images to Docker Hub"
     - docker push dhanjayarya/cinemasync-backend:latest
     - docker push dhanjayarya/cinemasync-backend:0.1
+
 
 
 deploy_backend:
@@ -90,14 +91,14 @@ deploy_backend:
   only:
     - main
   script:
-    - echo "🔑 Setting up SSH"
+    - echo " Setting up SSH"
 
     - mkdir -p ~/.ssh
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
     - chmod 600 ~/.ssh/id_ed25519
     - ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
 
-    - echo "🚀 Deploying to Ubuntu"
+    - echo "Deploying to Ubuntu"
     - |
       ssh -i ~/.ssh/id_ed25519 $SERVER_USER@$SERVER_IP "
         docker pull dhanjayarya/cinemasync-backend:latest &&
