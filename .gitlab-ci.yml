@@ -64,8 +64,55 @@ variables:
   DOCKER_TLS_CERTDIR: ""
 
 stages:
+  - test
   - build
   - deploy
+
+#testing for code and syntax errors
+test_backend:
+  stage: test
+  only:
+    - main
+  script:
+    - echo "🧪 Running full backend test"
+
+    - |
+      docker run --rm \
+        -v "$PWD":/app \
+        -w /app \
+        -e GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" \
+        -e GOOGLE_CLIENT_SECRET="$GOOGLE_CLIENT_SECRET" \
+        -e MONGODB_URI="$MONGODB_URI" \
+        -e JWT_SECRET="$JWT_SECRET" \
+        -e PORT="$PORT" \
+        -e FRONTEND_URL="$FRONTEND_URL" \
+        node:18-alpine sh -c "
+          echo '📦 Installing dependencies' &&
+          npm ci &&
+
+          echo '🚀 Starting server' &&
+          node src/index.js > server.log 2>&1 &
+
+          echo '⏳ Waiting for server startup' &&
+          sleep 8 &&
+
+          echo '📄 Server logs:' &&
+          cat server.log &&
+
+          echo '🔍 Checking server startup message' &&
+          grep -q 'Server running on port 4000' server.log &&
+
+          echo '🔍 Checking MongoDB connection' &&
+          grep -qi 'MongoDB Connected' server.log &&
+
+          echo '🌐 Testing /health endpoint' &&
+          apk add --no-cache curl &&
+          curl -f http://localhost:4000/health &&
+
+          echo '✅ BACKEND TEST PASSED'
+        "
+
+
 
 #build 
 build_image:
@@ -77,12 +124,10 @@ build_image:
     - docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
 
     - echo "🐳 Building Docker image"
-    - docker build -t dhanjayarya/cinemasync-backend:latest .
-    - docker build -t dhanjayarya/cinemasync-backend:0.2 .
+    - docker build -t dhanjayarya/cinemasync-backend:0.3 .
 
     - echo "🚀 Pushing images to Docker Hub"
-    - docker push dhanjayarya/cinemasync-backend:latest
-    - docker push dhanjayarya/cinemasync-backend:0.2
+    - docker push dhanjayarya/cinemasync-backend:0.3 .
 
 
 deploy_backend:
