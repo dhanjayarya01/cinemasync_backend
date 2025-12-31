@@ -5,6 +5,10 @@ stages:
   - build
   - deploy
 
+before_script:
+  - apt-get update -y
+  - apt-get install -y openssh-client
+
 hello_ci:
   stage: test
   script:
@@ -27,5 +31,21 @@ build_backend:
 
 deploy_backend:
   stage: deploy
+  only:
+    - main
   script:
     - echo "Deploying backend..."
+
+    # ---------- SSH SETUP ----------
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - ssh-keyscan -H YOUR_SERVER_IP >> ~/.ssh/known_hosts
+
+    # ---------- DEPLOY COMMANDS ----------
+    - ssh dhanjay-laptop@64.227.180.201 "
+        cd /home/cinemasync_backend/cinemasync_backend &&
+        git pull origin main &&
+        npm install --production &&
+        pm2 reload cinemasync || pm2 start src/index.js --name cinemasync
+      "
