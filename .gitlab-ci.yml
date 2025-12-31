@@ -2,6 +2,7 @@ image: node:18
 
 stages:
   - test
+  - verifyvar
   - build
   - deploy
 
@@ -9,6 +10,9 @@ before_script:
   - apt-get update -y
   - apt-get install -y openssh-client
 
+# -------------------------------
+# 1️⃣ BASIC TEST STAGE
+# -------------------------------
 hello_ci:
   stage: test
   script:
@@ -16,8 +20,52 @@ hello_ci:
     - node -v
     - npm -v
 
+# -------------------------------
+# 2️⃣ VERIFY VARIABLE STAGE
+# -------------------------------
+verify_ssh_var:
+  stage: verifyvar
+  only:
+    - main
+  script:
+    - echo "🔍 Verifying SSH variable..."
+
+    # Check variable exists
+    - |
+      if [ -z "$SSH_PRIVATE_KEY" ]; then
+        echo "❌ SSH_PRIVATE_KEY is EMPTY or NOT SET"
+        exit 1
+      else
+        echo "✅ SSH_PRIVATE_KEY is SET"
+      fi
+
+    # Print variable length (safe)
+    - echo "SSH_PRIVATE_KEY length: ${#SSH_PRIVATE_KEY}"
+
+    # Write key to file
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
+    - chmod 600 ~/.ssh/id_ed25519
+
+    # Show file info (safe)
+    - ls -l ~/.ssh
+
+    # Check first line (safe)
+    - echo "📄 First line of key:"
+    - head -n 1 ~/.ssh/id_ed25519
+
+    # Validate key format
+    - ssh-keygen -l -f ~/.ssh/id_ed25519 || (echo "❌ Invalid SSH key format" && exit 1)
+
+    - echo "✅ SSH key format looks valid"
+
+# -------------------------------
+# 3️⃣ BUILD STAGE
+# -------------------------------
 build_backend:
   stage: build
+  only:
+    - main
   script:
     - echo "Building backend..."
     - npm install
@@ -26,24 +74,25 @@ build_backend:
     paths:
       - node_modules/
     expire_in: 1 hour
-  only:
-    - main
 
+# -------------------------------
+# 4️⃣ DEPLOY STAGE
+# -------------------------------
 deploy_backend:
   stage: deploy
   only:
     - main
   script:
-    - echo "Deploying backend..."
+    - echo "🚀 Deploying backend..."
 
-    # ---------- SSH SETUP ----------
+    # SSH setup (key already validated earlier)
     - mkdir -p ~/.ssh
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
     - chmod 600 ~/.ssh/id_ed25519
     - ssh-keyscan -H 64.227.180.201 >> ~/.ssh/known_hosts
 
-    # ---------- DEPLOY COMMANDS ----------
-    - ssh dhanjay-laptop@64.227.180.201 "
+    # Deploy commands
+    - ssh -i ~/.ssh/id_ed25519 dhanjay-laptop@64.227.180.201 "
         cd /home/cinemasync_backend/cinemasync_backend &&
         git pull origin main &&
         npm install --production &&
