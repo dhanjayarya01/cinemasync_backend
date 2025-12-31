@@ -11,7 +11,7 @@ before_script:
   - apt-get install -y openssh-client
 
 # -------------------------------
-# 1️⃣ BASIC TEST STAGE
+# 1️⃣ BASIC TEST
 # -------------------------------
 hello_ci:
   stage: test
@@ -21,48 +21,44 @@ hello_ci:
     - npm -v
 
 # -------------------------------
-# 2️⃣ VERIFY SSH VARIABLE STAGE
+# 2️⃣ VERIFY SSH VARIABLE
 # -------------------------------
 verify_ssh_var:
   stage: verifyvar
   only:
     - main
   script:
-    - echo "🔍 Verifying SSH_PRIVATE_KEY variable..."
+    - echo "🔍 Verifying SSH_PRIVATE_KEY (base64)..."
 
-    # Check variable exists
     - |
       if [ -z "$SSH_PRIVATE_KEY" ]; then
-        echo "❌ SSH_PRIVATE_KEY is EMPTY or NOT SET"
+        echo "❌ SSH_PRIVATE_KEY is EMPTY"
         exit 1
       else
         echo "✅ SSH_PRIVATE_KEY is SET"
       fi
 
-    # Print variable length (SAFE)
     - |
       KEY_LEN=$(printf "%s" "$SSH_PRIVATE_KEY" | wc -c)
       echo "🔢 SSH_PRIVATE_KEY length: $KEY_LEN"
 
-    # Write key to file
     - mkdir -p ~/.ssh
-    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
+
+    # 🔥 DECODE BASE64 KEY (THIS IS THE FIX)
+    - echo "$SSH_PRIVATE_KEY" | base64 -d > ~/.ssh/id_ed25519
     - chmod 600 ~/.ssh/id_ed25519
 
-    # Show file info (SAFE)
     - ls -l ~/.ssh
 
-    # Check first line of key (SAFE)
-    - echo "📄 First line of SSH key:"
+    - echo "📄 First line of decoded key:"
     - head -n 1 ~/.ssh/id_ed25519
 
-    # Validate SSH key format
     - ssh-keygen -l -f ~/.ssh/id_ed25519 || (echo "❌ Invalid SSH key format" && exit 1)
 
-    - echo "✅ SSH key format looks valid"
+    - echo "✅ SSH key is VALID"
 
 # -------------------------------
-# 3️⃣ BUILD STAGE
+# 3️⃣ BUILD
 # -------------------------------
 build_backend:
   stage: build
@@ -78,7 +74,7 @@ build_backend:
     expire_in: 1 hour
 
 # -------------------------------
-# 4️⃣ DEPLOY STAGE
+# 4️⃣ DEPLOY
 # -------------------------------
 deploy_backend:
   stage: deploy
@@ -87,13 +83,11 @@ deploy_backend:
   script:
     - echo "🚀 Deploying backend..."
 
-    # SSH setup (key already verified)
     - mkdir -p ~/.ssh
-    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
+    - echo "$SSH_PRIVATE_KEY" | base64 -d > ~/.ssh/id_ed25519
     - chmod 600 ~/.ssh/id_ed25519
     - ssh-keyscan -H 64.227.180.201 >> ~/.ssh/known_hosts
 
-    # Deploy commands
     - ssh -i ~/.ssh/id_ed25519 dhanjay-laptop@64.227.180.201 "
         cd /home/cinemasync_backend/cinemasync_backend &&
         git pull origin main &&
