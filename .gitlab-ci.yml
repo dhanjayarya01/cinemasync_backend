@@ -40,7 +40,7 @@ deploy_backend:
     - mkdir -p ~/.ssh
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
-    - ssh-keyscan -H YOUR_SERVER_IP >> ~/.ssh/known_hosts
+    - ssh-keyscan -H 64.227.180.201 >> ~/.ssh/known_hosts
 
     # ---------- DEPLOY COMMANDS ----------
     - ssh dhanjay-laptop@64.227.180.201 "
