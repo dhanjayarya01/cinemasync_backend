@@ -1,55 +1,111 @@
-image: node:18
+# image: node:18
+
+# stages:
+#   - test
+#   - ssh_test
+
+# before_script:
+#   - apt-get update -y
+#   - apt-get install -y openssh-client
+
+# # -------------------------------
+# # 1️⃣ TEST STAGE – CHECK VARIABLE
+# # -------------------------------
+# check_var:
+#   stage: test
+#   only:
+#     - main
+#   script:
+#     - echo "🔍 Checking SSH_PRIVATE_KEY variable..."
+
+#     - |
+#       if [ -z "$SSH_PRIVATE_KEY" ]; then
+#         echo "❌ SSH_PRIVATE_KEY is EMPTY"
+#         exit 1
+#       else
+#         echo "✅ SSH_PRIVATE_KEY is SET"
+#       fi
+
+#     - |
+#       KEY_LEN=$(printf "%s" "$SSH_PRIVATE_KEY" | wc -c)
+#       echo "🔢 SSH_PRIVATE_KEY length: $KEY_LEN"
+
+# # -------------------------------
+# # 2️⃣ SSH TEST STAGE – PLAIN KEY
+# # -------------------------------
+# ssh_plain_test:
+#   stage: ssh_test
+#   only:
+#     - main
+#   script:
+#     - echo "🔐 Testing SSH with plain private key..."
+
+#     - mkdir -p ~/.ssh
+
+#     # WRITE PLAIN PRIVATE KEY (NO BASE64)
+#     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
+#     - chmod 600 ~/.ssh/id_ed25519
+
+#     - echo "📄 First line of key:"
+#     - head -n 1 ~/.ssh/id_ed25519
+
+#     - ssh-keyscan -H 64.227.180.201 >> ~/.ssh/known_hosts
+
+#     # SIMPLE SSH TEST (NO DEPLOY)
+#     - ssh -i ~/.ssh/id_ed25519 dhanjay-laptop@64.227.180.201 "whoami && hostname"
+
+
+image: docker:25
+
+services:
+  - docker:25-dind
+
+variables:
+  DOCKER_TLS_CERTDIR: ""
 
 stages:
-  - test
-  - ssh_test
+  - build
+  - deploy
 
-before_script:
-  - apt-get update -y
-  - apt-get install -y openssh-client
-
-# -------------------------------
-# 1️⃣ TEST STAGE – CHECK VARIABLE
-# -------------------------------
-check_var:
-  stage: test
+#build 
+build_image:
+  stage: build
   only:
     - main
   script:
-    - echo "🔍 Checking SSH_PRIVATE_KEY variable..."
+    - echo "🔐 Logging into Docker Hub"
+    - docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
 
-    - |
-      if [ -z "$SSH_PRIVATE_KEY" ]; then
-        echo "❌ SSH_PRIVATE_KEY is EMPTY"
-        exit 1
-      else
-        echo "✅ SSH_PRIVATE_KEY is SET"
-      fi
+    - echo "🐳 Building Docker image"
+    - docker build -t dhanjayarya/cinemasync-backend:latest .
+    - docker build -t dhanjayarya/cinemasync-backend:0.1 .
 
-    - |
-      KEY_LEN=$(printf "%s" "$SSH_PRIVATE_KEY" | wc -c)
-      echo "🔢 SSH_PRIVATE_KEY length: $KEY_LEN"
+    - echo "🚀 Pushing images to Docker Hub"
+    - docker push dhanjayarya/cinemasync-backend:latest
+    - docker push dhanjayarya/cinemasync-backend:0.1
 
-# -------------------------------
-# 2️⃣ SSH TEST STAGE – PLAIN KEY
-# -------------------------------
-ssh_plain_test:
-  stage: ssh_test
+
+deploy_backend:
+  stage: deploy
   only:
     - main
   script:
-    - echo "🔐 Testing SSH with plain private key..."
+    - echo "🔑 Setting up SSH"
 
     - mkdir -p ~/.ssh
-
-    # WRITE PLAIN PRIVATE KEY (NO BASE64)
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
     - chmod 600 ~/.ssh/id_ed25519
+    - ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
 
-    - echo "📄 First line of key:"
-    - head -n 1 ~/.ssh/id_ed25519
-
-    - ssh-keyscan -H 64.227.180.201 >> ~/.ssh/known_hosts
-
-    # SIMPLE SSH TEST (NO DEPLOY)
-    - ssh -i ~/.ssh/id_ed25519 dhanjay-laptop@64.227.180.201 "whoami && hostname"
+    - echo "🚀 Deploying to Ubuntu"
+    - |
+      ssh -i ~/.ssh/id_ed25519 $SERVER_USER@$SERVER_IP "
+        docker pull dhanjayarya/cinemasync-backend:latest &&
+        docker stop cinemasync || true &&
+        docker rm cinemasync || true &&
+        docker run -d \
+          --name cinemasync \
+          -p 3000:4000 \
+          --env-file ~/cinemasync.env \
+          dhanjayarya/cinemasync-backend:latest
+      "
