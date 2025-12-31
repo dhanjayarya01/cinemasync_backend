@@ -78,7 +78,7 @@ build_image:
 
     - echo "🐳 Building Docker image"
     - docker build -t dhanjayarya/cinemasync-backend:latest .
-    - docker build -t dhanjayarya/cinemasync-backend:0.2.
+    - docker build -t dhanjayarya/cinemasync-backend:0.2 .
 
     - echo "🚀 Pushing images to Docker Hub"
     - docker push dhanjayarya/cinemasync-backend:latest
