@@ -21,14 +21,14 @@ hello_ci:
     - npm -v
 
 # -------------------------------
-# 2️⃣ VERIFY VARIABLE STAGE
+# 2️⃣ VERIFY SSH VARIABLE STAGE
 # -------------------------------
 verify_ssh_var:
   stage: verifyvar
   only:
     - main
   script:
-    - echo "🔍 Verifying SSH variable..."
+    - echo "🔍 Verifying SSH_PRIVATE_KEY variable..."
 
     # Check variable exists
     - |
@@ -39,22 +39,24 @@ verify_ssh_var:
         echo "✅ SSH_PRIVATE_KEY is SET"
       fi
 
-    # Print variable length (safe)
-    - echo "SSH_PRIVATE_KEY length: ${#SSH_PRIVATE_KEY}"
+    # Print variable length (SAFE)
+    - |
+      KEY_LEN=$(printf "%s" "$SSH_PRIVATE_KEY" | wc -c)
+      echo "🔢 SSH_PRIVATE_KEY length: $KEY_LEN"
 
     # Write key to file
     - mkdir -p ~/.ssh
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
     - chmod 600 ~/.ssh/id_ed25519
 
-    # Show file info (safe)
+    # Show file info (SAFE)
     - ls -l ~/.ssh
 
-    # Check first line (safe)
-    - echo "📄 First line of key:"
+    # Check first line of key (SAFE)
+    - echo "📄 First line of SSH key:"
     - head -n 1 ~/.ssh/id_ed25519
 
-    # Validate key format
+    # Validate SSH key format
     - ssh-keygen -l -f ~/.ssh/id_ed25519 || (echo "❌ Invalid SSH key format" && exit 1)
 
     - echo "✅ SSH key format looks valid"
@@ -85,7 +87,7 @@ deploy_backend:
   script:
     - echo "🚀 Deploying backend..."
 
-    # SSH setup (key already validated earlier)
+    # SSH setup (key already verified)
     - mkdir -p ~/.ssh
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
     - chmod 600 ~/.ssh/id_ed25519
