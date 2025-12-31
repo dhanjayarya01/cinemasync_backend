@@ -2,33 +2,21 @@ image: node:18
 
 stages:
   - test
-  - verifyvar
-  - build
-  - deploy
+  - ssh_test
 
 before_script:
   - apt-get update -y
   - apt-get install -y openssh-client
 
 # -------------------------------
-# 1️⃣ BASIC TEST
+# 1️⃣ TEST STAGE – CHECK VARIABLE
 # -------------------------------
-hello_ci:
+check_var:
   stage: test
-  script:
-    - echo "CI is working"
-    - node -v
-    - npm -v
-
-# -------------------------------
-# 2️⃣ VERIFY SSH VARIABLE
-# -------------------------------
-verify_ssh_var:
-  stage: verifyvar
   only:
     - main
   script:
-    - echo "🔍 Verifying SSH_PRIVATE_KEY (base64)..."
+    - echo "🔍 Checking SSH_PRIVATE_KEY variable..."
 
     - |
       if [ -z "$SSH_PRIVATE_KEY" ]; then
@@ -42,55 +30,26 @@ verify_ssh_var:
       KEY_LEN=$(printf "%s" "$SSH_PRIVATE_KEY" | wc -c)
       echo "🔢 SSH_PRIVATE_KEY length: $KEY_LEN"
 
+# -------------------------------
+# 2️⃣ SSH TEST STAGE – PLAIN KEY
+# -------------------------------
+ssh_plain_test:
+  stage: ssh_test
+  only:
+    - main
+  script:
+    - echo "🔐 Testing SSH with plain private key..."
+
     - mkdir -p ~/.ssh
 
-    # 🔥 DECODE BASE64 KEY (THIS IS THE FIX)
-    - echo "$SSH_PRIVATE_KEY" | base64 -d > ~/.ssh/id_ed25519
+    # WRITE PLAIN PRIVATE KEY (NO BASE64)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
     - chmod 600 ~/.ssh/id_ed25519
 
-    - ls -l ~/.ssh
-
-    - echo "📄 First line of decoded key:"
+    - echo "📄 First line of key:"
     - head -n 1 ~/.ssh/id_ed25519
 
-    - ssh-keygen -l -f ~/.ssh/id_ed25519 || (echo "❌ Invalid SSH key format" && exit 1)
-
-    - echo "✅ SSH key is VALID"
-
-# -------------------------------
-# 3️⃣ BUILD
-# -------------------------------
-build_backend:
-  stage: build
-  only:
-    - main
-  script:
-    - echo "Building backend..."
-    - npm install
-    - echo "Backend build completed"
-  artifacts:
-    paths:
-      - node_modules/
-    expire_in: 1 hour
-
-# -------------------------------
-# 4️⃣ DEPLOY
-# -------------------------------
-deploy_backend:
-  stage: deploy
-  only:
-    - main
-  script:
-    - echo "🚀 Deploying backend..."
-
-    - mkdir -p ~/.ssh
-    - echo "$SSH_PRIVATE_KEY" | base64 -d > ~/.ssh/id_ed25519
-    - chmod 600 ~/.ssh/id_ed25519
     - ssh-keyscan -H 64.227.180.201 >> ~/.ssh/known_hosts
 
-    - ssh -i ~/.ssh/id_ed25519 dhanjay-laptop@64.227.180.201 "
-        cd cinemasync_backend/cinemasync_backend- &&
-        git pull origin main &&
-        npm install --production &&
-        pm2 reload cinemasync || pm2 start src/index.js --name cinemasync
-      "
+    # SIMPLE SSH TEST (NO DEPLOY)
+    - ssh -i ~/.ssh/id_ed25519 dhanjay-laptop@64.227.180.201 "whoami && hostname"
