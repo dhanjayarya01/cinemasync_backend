@@ -89,7 +89,7 @@ deploy_backend:
     - ssh-keyscan -H 64.227.180.201 >> ~/.ssh/known_hosts
 
     - ssh -i ~/.ssh/id_ed25519 dhanjay-laptop@64.227.180.201 "
-        cd /home/cinemasync_backend/cinemasync_backend &&
+        cd cinemasync_backend/cinemasync_backend- &&
         git pull origin main &&
         npm install --production &&
         pm2 reload cinemasync || pm2 start src/index.js --name cinemasync
