@@ -87,27 +87,30 @@ test_backend:
         -e PORT="$PORT" \
         -e FRONTEND_URL="$FRONTEND_URL" \
         node:18-alpine sh -c "
-          echo '📦 Installing dependencies' &&
-          npm install &&
+          set -e
 
-          echo '🚀 Starting server' &&
+          echo '📦 Installing dependencies'
+          npm install
+
+          echo '🚀 Starting server'
           node src/index.js > server.log 2>&1 &
 
-          echo '⏳ Waiting for server startup' &&
-          sleep 10 &&
+          echo '⏳ Waiting for server startup'
+          sleep 10
 
-          echo '📄 Server logs:' &&
-          cat server.log &&
+          echo '📄 Server logs'
+          test -f server.log || (echo '❌ server.log not created' && exit 1)
+          cat server.log
 
-          echo '🔍 Checking server startup' &&
-          grep -q 'Server running on port 4000' server.log &&
+          echo '🔍 Checking server startup'
+          grep -q 'Server running on port 4000' server.log
 
-          echo '🔍 Checking MongoDB connection' &&
-          grep -qi 'MongoDB Connected' server.log &&
+          echo '🔍 Checking MongoDB connection'
+          grep -qi 'MongoDB Connected' server.log
 
-          echo '🌐 Testing /health endpoint' &&
-          apk add --no-cache curl &&
-          curl -f http://localhost:4000/health &&
+          echo '🌐 Testing /health endpoint'
+          apk add --no-cache curl
+          curl -f http://localhost:4000/health
 
           echo '✅ BACKEND TEST PASSED'
         "
