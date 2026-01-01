@@ -73,6 +73,11 @@ test_backend:
   stage: test
   only:
     - main
+  artifacts:
+    when: always
+    paths:
+      - server.log
+    expire_in: 7 days
   script:
     - echo "🧪 Running full backend test"
 
@@ -99,7 +104,7 @@ test_backend:
           sleep 10
 
           echo '📄 Server logs'
-          test -f server.log || (echo '❌ server.log not created' && exit 1)
+          test -f server.log
           cat server.log
 
           echo '🔍 Checking server startup'
@@ -130,7 +135,7 @@ build_image:
     - docker build -t dhanjayarya/cinemasync-backend:0.3 .
 
     - echo "🚀 Pushing images to Docker Hub"
-    - docker push dhanjayarya/cinemasync-backend:0.3 .
+    - docker push dhanjayarya/cinemasync-backend:0.3
 
 
 deploy_backend:
